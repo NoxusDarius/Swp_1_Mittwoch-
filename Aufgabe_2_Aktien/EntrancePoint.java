@@ -1,6 +1,7 @@
 import java.awt.image.RenderedImage;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.chart.*;
@@ -18,8 +19,30 @@ public class EntrancePoint extends Application  {
     static String Stock;
     static String apikey;
     static String pawd;
+    static double money;
+    static String beginDate, endDate;
+    static Scanner scanner = new Scanner(System.in);
+    static LocalDate dateStart, dateEnd;
     public static void main(String[] args) throws IOException, JSONException {
-        Application.launch(args);
+
+
+
+
+        System.out.println("How much money do u want do invest?: ");
+        money = scanner.nextDouble();
+        System.out.println("At wich Date u wanna start to invest your money? [d/MM/yyyy]: ");
+        beginDate = scanner.next();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("d/MM/yyyy");
+        dateStart = LocalDate.parse(beginDate,formatter);
+       /* System.out.println("At wich Date u wanna end to invest your money? [d/MM/yyyy]: ");
+        endDate = scanner.next();
+        dateEnd = LocalDate.parse(endDate,formatter);*/
+        System.out.println(dateStart);
+        System.out.println(money);
+        System.out.println(beginDate);
+
+
+          Application.launch(args);
     }
     @Override
     public void start(Stage primaryStage) throws Exception {
@@ -49,13 +72,22 @@ public class EntrancePoint extends Application  {
                    SQL newSQL = new SQL();
                    newSQL.getAktienwert2(URL);
                    newSQL.connectToMySql(pawd);
+
                    newSQL.createTable(Stock);
                    newSQL.writeDataInDB(Stock);
                    newSQL.getData(Stock);
                    newSQL.avgBerechnen();
-                   newSQL.createTableAVG(Stock);
-                   newSQL.writeDataInDBAVG(Stock);
-                   newSQL.getDataAVG(Stock);
+                   newSQL.updateDurchschnitt(Stock);
+
+
+                  Simulation.connectToMySql(pawd);
+                   Simulation.createTable(Stock);
+                   Simulation.dummyLine(Stock,money);
+                   Simulation.normalway(dateStart,Stock);
+                   //newSQL.buyAtPlus(Stock,money,dateStart,dateEnd);
+                 //  newSQL.createTableAVG(Stock);
+                 //  newSQL.writeDataInDBAVG(Stock);
+                 //  newSQL.getDataAVG(Stock,beginDate);
 
                    //Angaben wie die Axen sein sollten
                    final NumberAxis yAxis = new NumberAxis();

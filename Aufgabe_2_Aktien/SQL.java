@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.sql.*;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.*;
 import org.apache.commons.io.IOUtils;
@@ -10,7 +11,7 @@ import org.json.JSONObject;
 
 
 
-public class SQL{
+public class SQL {
     public static String DBurl = "jdbc:mysql://localhost:3306/db_Aktien?useUnicode=true&useJDBCCompliantTimezoneShift=true&useLegacyDatetimeCode=false&serverTimezone=UTC";
     static Statement myStmt;
     public static Connection connection;
@@ -28,12 +29,11 @@ public class SQL{
 
         json = json.getJSONObject("Time Series (Daily)");
         System.out.println(URL);
-        for (int i=0; i<json.names().length(); i++) {
+        for (int i = 0; i < json.names().length(); i++) {
             dateList.add(LocalDate.parse((CharSequence) json.names().get(i)));
-            closeWerte.add(json.getJSONObject(LocalDate.parse((CharSequence)json.names().get(i)).toString()).getDouble("4. close"));
-            adjustedCloseWerte.add(json.getJSONObject(LocalDate.parse((CharSequence)json.names().get(i)).toString()).getDouble("5. adjusted close"));
+            closeWerte.add(json.getJSONObject(LocalDate.parse((CharSequence) json.names().get(i)).toString()).getDouble("4. close"));
+            adjustedCloseWerte.add(json.getJSONObject(LocalDate.parse((CharSequence) json.names().get(i)).toString()).getDouble("5. adjusted close"));
         }
-
 
 
     }
@@ -49,29 +49,29 @@ public class SQL{
 
     public static void avgBerechnen() {
         int count = 0;
-        double wert = 0, x,avg;
-        for(int i = 0; i <= adjustedcloseWerteDB.size()-1; i++){
+        double wert = 0, x, avg;
+        for (int i = 0; i <= adjustedcloseWerteDB.size() - 1; i++) {
             count++;
-            if(count <= 200){
+            if (count <= 200) {
                 wert = wert + adjustedcloseWerteDB.get(i);
-                avg = wert/count;
+                avg = wert / count;
                 durchschnitt.add(avg);
             }
-            if(count > 200) {
-                x = adjustedcloseWerteDB.get(i-200);
+            if (count > 200) {
+                x = adjustedcloseWerteDB.get(i - 200);
                 wert = wert - x;
                 wert = wert + adjustedcloseWerteDB.get(i);
-                avg = wert/200;
+                avg = wert / 200;
                 durchschnitt.add(avg);
             }
         }
 
     }
-    static void connectToMySql(String pwd)  {
+
+    static void connectToMySql(String pwd) {
         {
             try {
-                connection = DriverManager.getConnection(DBurl, "root", "Airbase11");
-                myStmt = connection.createStatement();
+                connection = DriverManager.getConnection(DBurl, "root", pwd);
                 System.out.println("Datenbank verknüpft");
 
             } catch (SQLException e) {
@@ -82,31 +82,34 @@ public class SQL{
         }
     }
 
-    static void createTable(String Stock)  {
-        try{
+    static void createTable(String Stock) throws SQLException {
+        if (connection.isValid(5)) {
+            System.out.println("Connection überprüft");
+            try {
 
-            myStmt = connection.createStatement();
-            String createtable = "create table if not exists "+Stock+" (datum varchar(255) primary key, close double, adjustedclose double);";
-            //String createtableAVG = "create table if not exists "+Stock+"AVG (datumAVG varchar(255) primary key, avg double);";
-            myStmt.executeUpdate(createtable);
-            //  myStmt.executeUpdate(createtableAVG);
+                myStmt = connection.createStatement();
+                String createtable = "create table if not exists " + Stock + " (datum varchar(255) primary key, close double, adjustedclose double, closeAVG double);";
+                //String createtableAVG = "create table if not exists "+Stock+"AVG (datumAVG varchar(255) primary key, avg double);";
+                myStmt.executeUpdate(createtable);
+                System.out.println("Create Table abgeschlossen");
+                //  myStmt.executeUpdate(createtableAVG);
 
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
+        } else System.out.println("Nicht verbunden");
     }
 
-    static void writeDataInDB(String Stock){
+    static void writeDataInDB(String Stock) {
         try {
+            System.out.println(durchschnitt);
             myStmt = connection.createStatement();
-            for(int i = 0; i < dateList.size(); i++) {
-                String writeData = "insert ignore into " + Stock + " (datum, close,adjustedclose ) values('" + dateList.get(i) + "', '" + closeWerte.get(i) + "','" + adjustedCloseWerte.get(i) + "');";
+            for (int i = 0; i < dateList.size(); i++) {
+                String writeData = "insert ignore into " + Stock + " (datum, close,adjustedclose, closeAVG ) values('" + dateList.get(i) + "', '" + closeWerte.get(i) + "','" + adjustedCloseWerte.get(i) + "','"+null+"');";
                 myStmt.executeUpdate(writeData);
             }
             System.out.println("Datensatz eingetragen");
-        }
-        catch (SQLException e) {
+        } catch (SQLException e) {
             e.printStackTrace();
         }
     }
@@ -116,71 +119,33 @@ public class SQL{
             Statement myStmt = connection.createStatement();
 
 
-            ResultSet rsNormal = myStmt.executeQuery( "SELECT * from " + Stock + " order by datum");
+            ResultSet rsNormal = myStmt.executeQuery("SELECT * from " + Stock + " order by datum");
             System.out.println("Stock=" + Stock);
-          //  System.out.println("Datum               Close Werte           ");
             while (rsNormal.next()) {
-               /* System.out.println(
-                        rsNormal.getString("datum") + "\t \t \t \t" +
-                                rsNormal.getDouble("close") + "\t \t \t \t" +
-                                rsNormal.getDouble("adjustedclose") + "\t \t \t \t"
-                );*/
-
                 DatumDB.add(rsNormal.getString("datum"));
                 closeWerteDB.add(rsNormal.getDouble("close"));
                 adjustedcloseWerteDB.add(rsNormal.getDouble("adjustedclose"));
             }
+            System.out.println(adjustedcloseWerteDB);
         } catch (SQLException e) {
             e.printStackTrace();
         }
 
     }
-    // Tabele für Durchschnitts werte anlegen
-    static void createTableAVG(String Stock)  {
-        try{
-            myStmt = connection.createStatement();
-            String createtable = "create table if not exists "+Stock+"AVG (datum varchar(255) primary key, closeAVG double);";
-            //String createtableAVG = "create table if not exists "+Stock+"AVG (datumAVG varchar(255) primary key, avg double);";
-            myStmt.executeUpdate(createtable);
-            //  myStmt.executeUpdate(createtableAVG);
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-    }
-    static void writeDataInDBAVG(String Stock){
+        public static void updateDurchschnitt(String Stock){
         try {
-            myStmt = connection.createStatement();
-            for(int i = 0; i < dateList.size(); i++) {
-                String writeData = "insert ignore into " + Stock + "AVG (datum, closeAVG ) values('" + dateList.get(i) + "', '" + durchschnitt.get(i) + "');";
-                myStmt.executeUpdate(writeData);
-            }
-            System.out.println("Datensatz Table AVG eingetragen");
-        }
-        catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-    public static void getDataAVG(String Stock) {
-        try {
+            System.out.println("hello manuel");
             Statement myStmt = connection.createStatement();
-
-
-            ResultSet rsNormal = myStmt.executeQuery( "SELECT * from " + Stock + "AVG order by datum");
-
-         //   System.out.println("Datum               AVG Werte           ");
-            while (rsNormal.next()) {
-             /*   System.out.println(
-                        rsNormal.getString("datum") + "\t \t \t \t" +
-                                rsNormal.getDouble("closeAVG") + "\t \t \t \t"
-
-                );*/
-
+            for (int i = 0; i< durchschnitt.size(); i++) {
+                String update = "update " + Stock + " set closeAVG=" + durchschnitt.get(i) + "where datum='" + DatumDB.get(i) + "';";
+                myStmt.executeUpdate(update);
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
+
+        }catch  (SQLException throwables) {
+            throwables.printStackTrace();
         }
 
-    }
+        }
+
+
 }
