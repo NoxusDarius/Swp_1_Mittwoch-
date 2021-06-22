@@ -113,7 +113,7 @@ public class EntrancePoint extends Application {
             SQL.adjustedCloseWerte.clear();
             SQL.adjustedcloseWerteDB.clear();
 
-            File file = new File("C:\\Users\\sebas\\Desktop\\Aufgabe_2_Aktien\\PNG" + Stock + LocalDate.now() + ".png");
+            File file = new File("C:\\Users\\Anwender\\Desktop\\Aufgabe_2_Aktien\\PNG" + Stock + LocalDate.now() + ".png");
             WritableImage writableImage = new WritableImage((int) lineChart.getWidth(), (int) lineChart.getHeight());
             lineChart.snapshot(null, writableImage);
             RenderedImage rImage = SwingFXUtils.fromFXImage(writableImage,

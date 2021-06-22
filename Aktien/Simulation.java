@@ -1,6 +1,7 @@
 import com.mysql.cj.protocol.Resultset;
 
 import java.sql.*;
+import java.text.NumberFormat;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -16,6 +17,9 @@ public class Simulation {
     static double gesamtWithout;
     static double gesamtWith;
     static double gesamthold;
+
+    static  NumberFormat n = NumberFormat.getInstance();
+
     /*
     -----------------------------------------------------------------------------------------------------------------
     Datenbank Teil
@@ -25,7 +29,7 @@ public class Simulation {
         {
             try {
                 connection = DriverManager.getConnection(DBurl, "root", pwd);
-                // System.out.println("Datenbank für Simulation verknüpft verknüpft");
+
 
             } catch (SQLException e) {
                 System.out.println("Datenbank wurde nicht verknüpft");
@@ -39,12 +43,9 @@ public class Simulation {
         try {
 
             myStmt = connection.createStatement();
-            String createtable = "create table if not exists sim_" + auswahl + "" + Stock + " (datum varchar(32) primary key, aktien int , restwert double, status double);";
-            //String createtableAVG = "create table if not exists "+Stock+"AVG (datumAVG varchar(255) primary key, avg double);";
+            String createtable = "create table if not exists sim_" + auswahl + " (datum varchar(32) , aktien int , restwert double, status double,stock varchar(4), primary key(datum,stock));";
             myStmt.executeUpdate(createtable);
-            // System.out.println("Create Table abgeschlossen");
-            //  myStmt.executeUpdate(createtableAVG);
-            dummyLine(Stock, money, auswahl, tempDate);
+
 
         } catch (SQLException e) {
             e.printStackTrace();
@@ -57,10 +58,9 @@ public class Simulation {
         try {
             myStmt = connection.createStatement();
 
-            String writeData = "insert ignore into sim_" + auswahl + "" + Stock + " (datum,aktien,restwert,status ) values('" + tempdate.minusDays(1) + "', '" + 0 + "','" + kapital + "','" + 0 + "');";
+            String writeData = "insert ignore into sim_" + auswahl + " (datum,aktien,restwert,status,stock ) values('" + tempdate.minusDays(1) + "', '" + 0 + "','" + kapital + "','" + 0 + "','"+Stock+"');";
             myStmt.executeUpdate(writeData);
 
-            // System.out.println("Datensatz eingetragen");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -70,10 +70,9 @@ public class Simulation {
         try {
             myStmt = connection.createStatement();
 
-            String droptable = "drop table if exists sim_" + auswahl + "" + Stock + " ;";
+            String droptable = "drop table if exists sim_" + auswahl + " ;";
             myStmt.executeUpdate(droptable);
 
-            // System.out.println("Datensatz eingetragen");
         } catch (SQLException e) {
             e.printStackTrace();
         }
@@ -85,10 +84,11 @@ public class Simulation {
         Methode mit Prozentangabe
      */
     static void withpercent(LocalDate startdate, String Stock, double toleranz, double money) throws SQLException {
-
+        n.setMaximumFractionDigits(2);
         String auswahl = "withpercent";
-        dropTable(Stock, auswahl);
-        createTable(Stock, auswahl, money, startdate);
+
+
+
         for (LocalDate currentDate = startdate; currentDate.isBefore(LocalDate.now()); currentDate = currentDate.plusDays(1)) {
 
             List<Double> result = selectLastDate(Stock, Arrays.asList("status", "restwert", "aktien"), auswahl);
@@ -119,12 +119,11 @@ public class Simulation {
 
             double endwet = (closetemp * aktienend) + endDepo;
             gesamtWith = gesamtWith + endwet;
-            System.out.println("Die Aktie"+Stock);
-            System.out.println("Der Endbetrag mit beträgt mit "+toleranz+"%: " + endwet+"€");
+            System.out.println("Der Endbetrag mit beträgt mit "+Stock+" "+toleranz+"%: " + n.format(endwet)+"€");
         } else if (status == 0) {
             gesamtWith = gesamtWith + endDepo;
-            System.out.println("Die Aktie"+Stock);
-            System.out.println("Der Endbetrag mit beträgt mit "+toleranz+"%: " + endDepo+"€");
+
+            System.out.println("Der Endbetrag mit beträgt mit  "+toleranz+"%:"+Stock+": " + n.format(endDepo)+"€");
         }
 
     }
@@ -133,10 +132,14 @@ public class Simulation {
     -----------------------------------------------------------------------------------
         Methode ohne Prozentangabe
      */
+
+
     static void normalway(LocalDate startdate, String Stock, double money) throws SQLException {
+        n.setMaximumFractionDigits(2);
         String auswahl = "normalway";
-        dropTable(Stock, auswahl);
-        createTable(Stock, auswahl, money, startdate);
+
+
+
         for (LocalDate currentDate = startdate; currentDate.isBefore(LocalDate.now()); currentDate = currentDate.plusDays(1)) {
             // if (börsenfeiertage(currentDate)) {
             // System.out.println(currentDate);
@@ -174,14 +177,14 @@ public class Simulation {
             double endwet = (closetemp * aktienend) + endDepo;
             gesamtWithout = gesamtWithout+endwet;
 
-            System.out.println("Der Endbetrag beträgt bei der 200er Strategie: " + Math.round(endwet)+"€");
+            System.out.println("Der Endbetrag beträgt bei der 200er Strategie:"+Stock+": " + n.format(endwet)+"€");
 
 
         } else if (status == 0) {
 
             gesamtWithout = gesamtWithout + endDepo;
 
-            System.out.println("Der Endbetrag beträgt bei der 200er Strategie: " + Math.round(endDepo)+"€");
+            System.out.println("Der Endbetrag beträgt bei der 200er Strategie: "+Stock+": " + n.format(endDepo)+"€");
         }
 
     }
@@ -192,18 +195,17 @@ public class Simulation {
 
      */
     public static void hold(String Stock, LocalDate tmepDate, double Kapital) {
-        try {
-            Statement mystmt = connection.createStatement();
+        n.setMaximumFractionDigits(2);
+
             try {
 
                 List<String> lastdate = getfirstDate(Stock, Arrays.asList("datum"), tmepDate);
-                String datumstarttemp = lastdate.get(0);
-                LocalDate today = LocalDate.parse(datumstarttemp);
+                LocalDate today = LocalDate.parse(lastdate.get(0));
 
 
                 List<Double> closewert = selectbyDate(Stock, today, Arrays.asList("adjustedclose"));
                 double closetemp = closewert.get(0);
-                System.out.println(today);
+                //System.out.println(today);
 
                 double aktien, rest;
                 if (Kapital % closetemp == 0) {
@@ -213,12 +215,17 @@ public class Simulation {
                     aktien = Math.floor(Kapital / closetemp);
                     rest = Kapital % closetemp;
                 }
-                List<Double> closewertend = selectbyDate(Stock, LocalDate.now().minusDays(1), Arrays.asList("adjustedclose"));
+                insert(rest,Stock,aktien,today,1,"hold");
+                List<String> lastdatetmep = getLastDate(Stock, Arrays.asList("datum"));
+                LocalDate lastsate = LocalDate.parse(lastdatetmep.get(0));
+                List<Double> closewertend = selectbyDate(Stock, lastsate, Arrays.asList("adjustedclose"));
+               // System.out.println(lastsate);
                 double closetempend = closewertend.get(0);
                 double endwert = (aktien * closetempend) + rest;
                 gesamthold = gesamthold + endwert;
+                insert(endwert,Stock,0,lastsate,0,"hold");
 
-                System.out.println("Der Endbertrag für die Hold Strategie beträgt: " + endwert+"€");
+                System.out.println("Der Endbertrag für die Hold Strategie beträgt: "+Stock+": " + n.format(endwert)+"€");
                 //System.out.println("DerProzentuelle Gewinn beträgt:" +(endwert/Kapital));
 
 
@@ -226,9 +233,6 @@ public class Simulation {
             } catch (IndexOutOfBoundsException e) {
                 System.out.println("Falsche EIngabe bitte versuchen sie es enrneut(Wähle einen Vorhandenen Aktientag aus)");
             }
-        } catch (SQLException throwables) {
-            throwables.printStackTrace();
-        }
 
 
     }
@@ -320,7 +324,7 @@ public class Simulation {
 
     public static List<Double> selectLastDate(String Stock, List<String> werte, String auswahl) {
         List<Double> results = new ArrayList();
-        String getvaluedummy = "select * from sim_" + auswahl + "" + Stock + " order by datum desc limit 1;";
+        String getvaluedummy = "select * from sim_" + auswahl + " where stock='"+Stock+"' order by datum desc limit 1;";
 
 
         try {
@@ -341,7 +345,7 @@ public class Simulation {
 
     public static List<Double> selectbyDate(String Stock, LocalDate tempDate, List<String> werte) {
         List<Double> result = new ArrayList<>();
-        String getClose = "select * from " + Stock + " where Datum =\'" + tempDate + "\'having datum is not null;";
+        String getClose = "select * from " + Stock + " where Datum ='" + tempDate + "'having datum is not null;";
         try {
 
             myStmt = connection.createStatement();
@@ -364,7 +368,7 @@ public class Simulation {
         try {
             myStmt = connection.createStatement();
 
-            String insertAktien = "insert into sim_" + auswahl + "" + Stock + " (datum,aktien,restwert,status ) values('" + tempDate + "', '" + aktien + "','" + depo + "','" + status + "');";
+            String insertAktien = "insert into sim_" + auswahl + " (datum,aktien,restwert,status,stock ) values('" + tempDate + "', '" + aktien + "','" + depo + "','" + status + "','"+Stock+"');";
             myStmt.executeUpdate(insertAktien);
 
         } catch (SQLException throwables) {
@@ -374,10 +378,12 @@ public class Simulation {
 
     }
     public static void gesamtAusgabe(){
+        n.setMaximumFractionDigits(2);
+
         System.out.println("Gesamtausgabe");
-        System.out.println("Gesamt ohne Prozent: "+gesamtWithout+"€");
-        System.out.println("Gesamt mit Prozent: "+gesamtWith+"€");
-        System.out.println("Gesamt hold: "+gesamthold+"€");
+        System.out.println("Gesamt ohne Prozent: "+n.format(gesamtWithout)+"€");
+        System.out.println("Gesamt mit Prozent: "+n.format(gesamtWith)+"€");
+        System.out.println("Gesamt hold: "+n.format(gesamthold)+"€");
     }
 }
 
